@@ -623,7 +623,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     if (g_pth_Settings.favoritePaths.Length > 0) {
         InsertMenuItem(CurrentLocations, "Favorites", unset, unset, unset, unset) ; Header
         for favoritePath in g_pth_Settings.favoritePaths {
-            InsertMenuItem(CurrentLocations, favoritePath, favoritePath, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
+            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix favoritePath, favoritePath, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
             hasItems := true
         }
     }
@@ -636,7 +636,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
                     InsertMenuItem(CurrentLocations, "Conditional Favorites - Executable Match", unset, unset, unset, unset) ; Header
                     ; Add all the paths
                     for conditionPath in conditionalFavorite.Paths {
-                        InsertMenuItem(CurrentLocations, conditionPath, conditionPath, A_WinDir . "\system32\imageres.dll", "-81", false) ; Conditional Favorite Path
+                        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix conditionPath, conditionPath, A_WinDir . "\system32\imageres.dll", "-81", false) ; Conditional Favorite Path
                         hasItems := true
                     }
                     break ; No need to keep going if we found a match
@@ -653,7 +653,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
                     InsertMenuItem(CurrentLocations, "Conditional Favorites - Path Match", unset, unset, unset, unset) ; Header
                     ; Add all the paths
                     for conditionPath in conditionalFavorite.Paths {
-                        InsertMenuItem(CurrentLocations, conditionPath, conditionPath, A_WinDir . "\system32\imageres.dll", "-81", false) ; Conditional Favorite Path
+                        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix conditionPath, conditionPath, A_WinDir . "\system32\imageres.dll", "-81", false) ; Conditional Favorite Path
                         hasItems := true
                     }
                     break ; No need to keep going if we found a match
@@ -662,56 +662,50 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         }
     }
 
-    ; Add a separator if we had favorites
-    if (hasItems)
-        InsertMenuItem(CurrentLocations, "", unset, unset, unset, unset) ; Separator
-
     ; Only get Directory Opus paths if dopusRTPath is set
     if (g_pth_Settings.dopusRTPath != "") {
         ; Get paths from Directory Opus using DOpusRT
         paths := GetDOpusPaths()
 
         ; Group paths by lister
-        listers := Map()
+        listersMap := Map()
 
-        ; First, group all paths by their lister
-        for pathObj in paths {
-            if !listers.Has(pathObj.lister)
-                listers[pathObj.lister] := []
-            listers[pathObj.lister].Push(pathObj)
-        }
-
-        ; First add paths from active lister
+        ; Get the ID of the active lister
+        activeListerID := ""
         for pathObj in paths {
             if (pathObj.isActiveLister) {
-                InsertMenuItem(CurrentLocations, "Opus Window " A_Index " (Active)", unset, unset, unset, unset) ; Header
-
-                ; Add all paths for this lister
-                listerPaths := listers[pathObj.lister]
-                for tabObj in listerPaths {
-                    menuText := tabObj.path
-                    ; Add prefix and suffix for active tab based on global settings
-                    if (tabObj.isActiveTab)
-                        menuText := g_pth_Settings.activeTabPrefix menuText g_pth_Settings.activeTabSuffix
-                    else
-                        menuText := g_pth_Settings.standardEntryPrefix menuText
-
-                    InsertMenuItem(CurrentLocations, menuText, tabObj.path, A_WinDir . "\system32\imageres.dll", "4", tabObj.isActiveTab) ; Path
-                    hasItems := true
-
-                }
-
-                ; Remove this lister from the map so we don't show it again
-                listers.Delete(pathObj.lister)
+                activeListerID := pathObj.lister
                 break
             }
         }
 
-        ; Then add remaining Directory Opus listers. I forget why there's a separate block for the rest, I think there was a reason, maybe I'll conolidate it later
-        ; Might have something to do with using pathObj vs tabObj
-        windowNum := 2
-        for lister, listerPaths in listers {
-            InsertMenuItem(CurrentLocations, "Opus Window " windowNum " (Active)", unset, unset, unset, unset) ; Header
+        ; First, group all paths by their lister
+        for pathObj in paths {
+            if !listersMap.Has(pathObj.lister)
+                listersMap[pathObj.lister] := []
+            listersMap[pathObj.lister].Push(pathObj)
+        }
+
+        ; Add the listers to a new list variable starting with the active lister, then the rest
+        listers := []
+        ; Add the active lister first if it exists
+        if (activeListerID != "" and listersMap.Has(activeListerID)) {
+            listers.Push(listersMap[activeListerID])
+            listersMap.Delete(activeListerID)
+        }
+        ; Add any other listers
+        for lister, listerPaths in listersMap {
+            listers.Push(listerPaths)
+        }
+        
+        windowNum := 1
+        for listerPaths in listers {
+            ; Add a separator if we had favorites and have Directory Opus paths to show
+            if (hasItems and paths.Length > 0)
+                InsertMenuItem(CurrentLocations, "", unset, unset, unset, unset) ; Separator
+            
+            headerText := "Opus Window " windowNum
+            InsertMenuItem(CurrentLocations, headerText, unset, unset, unset, unset) ; Header
 
             ; Add all paths for this lister
             for pathObj in listerPaths {
