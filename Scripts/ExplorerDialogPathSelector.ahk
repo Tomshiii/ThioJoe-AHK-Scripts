@@ -494,7 +494,10 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         text := StrReplace(text, "&", "&&")
 
         ; If it's a CLSID, get the folder name from the CLSID
+        usingCLSID := false
+        clsidFriendlyName := ""
         if (pathStr ~= "::{") {
+            usingCLSID := true
             clsidObj := ProcessCLSIDPaths(pathStr)
             clsidFriendlyName := clsidObj.displayText
             clsidPathStr := clsidObj.clsidNewPath
@@ -530,6 +533,11 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
 
         ; Check if the path matches the dialog already. If so, disable the item
         if (windowPath and (windowPath = path)) {
+            menuObj.Disable(currentMenuNum "&")
+        }
+
+        ; Additional check for CLSID paths to disable if the window path matches the CLSID path
+        if (usingCLSID and (clsidFriendlyName != "") and (windowPath = clsidFriendlyName)) {
             menuObj.Disable(currentMenuNum "&")
         }
     }
@@ -805,8 +813,9 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     NavigateDialog(path, windowHwnd, dialogInfo) {
         
         if (dialogInfo.Type = "ModernDialog") {
-            NavigateUsingAddressbar(path)
+            NavigateUsingAddressbar(path, windowHwnd)
         } else if (dialogInfo.Type = "HasEditControl") {
+            WinActivate("ahk_id " windowID)
             WM_SETTEXT := 0x000C
 
             ; Get the initial text of the edit control
@@ -842,13 +851,36 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
         }
     }
     
-    NavigateUsingAddressbar(path){
-        Send("!{d}")
+    NavigateUsingAddressbar(path, windowHwnd) {
+        WinWaitActive("ahk_id " windowHwnd)
+        ; Try getting the text from the Edit1 control
+        originalFileName := ""
+        try {
+            originalFileName := ControlGetText("Edit1", "ahk_id " windowHwnd)
+            ControlSetText("", "Edit1", windowHwnd) ; Clear the text box just in case something weird happens so it doesn't save the file prematurely
+        } catch Error as err {
+            OutputDebug("`nError getting or setting Edit1 control text. Message: " err.Message)
+        }
+
+        Send("!{d}") ; For some reason doesn't seem to work sending to the window
         Sleep(50)
-        addressbar := ControlGetFocus("a")
-        ControlSetText(path, addressbar, "a")
-        ControlSend("{Enter}", addressbar, "a")
-        ControlFocus("Edit1", "a")
+        addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
+        addressBarClassNN := ControlGetClassNN(addressbarHwnd)
+
+        if (addressbarClassNN = "Edit2") {
+            ControlSetText(path, addressBarClassNN, "ahk_id " windowHwnd)
+            ControlSend("{Enter}", addressBarClassNN, "ahk_id " windowHwnd)
+            ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
+        } else {
+            OutputDebug("`n`nAddress bar didn't match expected class name. Found ClassNN: " addressBarClassNN)
+        }
+
+        ; Restore the original file name if it was there
+        if (originalFileName != "") {
+            ControlSetText(originalFileName, "Edit1", "ahk_id " windowHwnd)
+        } else{
+            OutputDebug("`n`nOriginal file name not found or no file name box handle")
+        }
     }
 
     GetDialogAddressbarHwnd(windowHwnd) {
@@ -936,15 +968,13 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
         return
 
     } else { ; Default: #32770 or other compatible dialog
-        WinActivate("ahk_id " windowID)
-
         ; Check if it's a legacy dialog
         if (dialogInfo := DetectDialogType(windowID)) {
             ; Use the legacy navigation approach
             NavigateDialog(f_path, windowID, dialogInfo)
         } else {
             ; Assume modern dialog
-            NavigateUsingAddressbar(f_path)
+            NavigateUsingAddressbar(f_path, windowID)
         }
         return
     }
