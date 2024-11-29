@@ -30,6 +30,8 @@ class pathSelector_DefaultSettings {
     static enableUIAccess := true
     ; Group paths by Window or not
     static groupPathsByWindow := true
+    ; Use simulated bold text for active paths in the menu
+    static useBoldTextActive := true
     static activeTabSuffix := ""            ;  Appears to the right of the active path for each window group
     static activeTabPrefix := "► "          ;  Appears to the left of the active path for each window group
     static standardEntryPrefix := "    "    ; Indentation for inactive tabs, so they line up
@@ -386,15 +388,42 @@ GetDOpusPaths() {
 ; Display the menu
 DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must accept the hotkey as its first parameter
     ; ------------------------- LOCAL FUNCTIONS -------------------------
-    GetFolderNameFromCLSID(clsid) {
+    ProcessCLSIDPaths(clsidInputPath) {
+        returnObj := {displayText: "", clsidNewPath: ""}
         try {
             ; Create Shell.Application COM object
             shell := ComObject("Shell.Application")
-            folder := shell.Namespace(clsid)
-            return folder.Self.Name
+            folder := shell.Namespace(clsidInputPath)
+            displayName := folder.Self.Name
+            clsidNewPath := clsidInputPath
+
+            ; Further check to process library-ms files
+            if (SubStr(clsidInputPath, -11) = ".library-ms") {
+                ; Remove the ".library-ms" extension or else it won't work when navigating
+                clsidNewPath := SubStr(clsidInputPath, 1, -11)
+                
+                ; If there are CLSIDs in the path, convert them to folder names to show full context instead of just showing the final CLSID folder name
+                ; Example: "::{031E4825-7B94-4DC3-B131-E946B44C8DD5}\Music" -> "Libraries\Music"
+                ;     And show Libraries\Music instead of just Music
+                if (RegExMatch(clsidNewPath, "::{[^}]+}")) {
+                    fullContextDisplayName := clsidNewPath ; For libraries may end up looking like "Libraries\Documents"
+
+                    while (RegExMatch(fullContextDisplayName, "::{[^}]+}", &match)) {
+                        clsidName := shell.Namespace(match[0]).Self.Name
+                        fullContextDisplayName := StrReplace(fullContextDisplayName, match[0], clsidName)
+                    }
+                    displayName := fullContextDisplayName
+                }
+            }
+
+            returnObj.displayText := displayName
+            returnObj.clsidNewPath := clsidNewPath
+
+            return returnObj
+
         } catch as err {
-            OutputDebug("Error Getting Folder Name From CLSID " clsid " : " err.Message)
-            return ""
+            OutputDebug("Error Getting Folder Name From CLSID " clsidInputPath " : " err.Message)
+            return returnObj
         }
     }
 
@@ -411,6 +440,31 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
             }
         }
         return ""
+    }
+
+    ; Replaces the text in the input string with a bold unicode version of the text for latin characters
+    SimulateBoldText(inputText) {
+        boldText := ""
+        len := StrLen(inputText)
+        boldSansSerifStartUpper := 0x1D5D4
+        boldSansSerifStartLower := 0x1D5EE
+        boldSansSerifNumbers := 0x1D7EC
+    
+        Loop len {
+            char := SubStr(inputText, A_Index, 1)
+            charCode := Ord(char)
+            if IsAlpha(char) {
+                if (charCode >= Ord("A") && charCode <= Ord("Z")) ; Check if character is uppercase
+                    boldText .= Chr(boldSansSerifStartUpper + charCode - Ord("A"))
+                else if (charCode >= Ord("a") && charCode <= Ord("z")) ; Check if character is lowercase
+                    boldText .= Chr(boldSansSerifStartLower + charCode - Ord("a"))
+            }
+            else if (charCode >= Ord("0") && charCode <= Ord("9")) ; Check if character is a number
+                boldText .= Chr(boldSansSerifNumbers + charCode - Ord("0"))
+            else
+                boldText .= char
+        }
+        return boldText
     }
 
     ;global menuItemTrackerObj := {} ; For debugging purposes
@@ -441,10 +495,22 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
 
         ; If it's a CLSID, get the folder name from the CLSID
         if (pathStr ~= "::{") {
-            clsidFriendlyName := GetFolderNameFromCLSID(pathStr)
-            if (clsidFriendlyName != "") {
-                text := clsidFriendlyName
+            clsidObj := ProcessCLSIDPaths(pathStr)
+            clsidFriendlyName := clsidObj.displayText
+            clsidPathStr := clsidObj.clsidNewPath
+
+            if (clsidFriendlyName != "" and clsidPathStr != "") {
+                pathStr := clsidPathStr
+
+                if (isActiveTab)
+                    text := g_pth_Settings.activeTabPrefix clsidFriendlyName g_pth_Settings.activeTabSuffix
+                else
+                    text := g_pth_Settings.standardEntryPrefix clsidFriendlyName
             }
+        }
+
+        if IsSet(isActiveTab) and isActiveTab and g_pth_Settings.useBoldTextActive {
+            text := SimulateBoldText(text)
         }
 
         ; Add the item and increment the counter
@@ -1081,6 +1147,12 @@ ShowPathSelectorSettingsGUI(*) {
     labelGroupByWindowCheckTooltipText := "If disabled, paths from Windows Explorer will all be listed together without grouping by window.`nIdeal for Windows 10 which does not have tabs."
     AddTooltipToControl(hTT, groupByWindowCheck.Hwnd, labelGroupByWindowCheckTooltipText)
 
+    ; Use bold font for active tab - Checkbox
+    useBoldTextActiveCheck := settingsGui.AddCheckbox("xm y+5", "Use Bold Font for Active Tabs")
+    useBoldTextActiveCheck.Value := g_pth_Settings.useBoldTextActive
+    useBoldTextActiveCheckTooltipText := "Use a bold font for the active tab in the menu.`nNote: It uses a simulated bold effect using unicode, `n      so it may not look perfect for all characters."
+    AddTooltipToControl(hTT, useBoldTextActiveCheck.Hwnd, useBoldTextActiveCheckTooltipText)
+
     ; Enable UI Access - Checkbox
     UIAccessCheck := settingsGui.AddCheckbox("xm y+5", "Enable UI Access")
     UIAccessCheck.Value := g_pth_Settings.enableUIAccess
@@ -1167,6 +1239,7 @@ ShowPathSelectorSettingsGUI(*) {
         dopusPathEdit.Value := pathSelector_DefaultSettings.dopusRTPath
         prefixEdit.Value := pathSelector_DefaultSettings.activeTabPrefix
         ;suffixEdit.Value := DefaultSettings.activeTabSuffix
+        useBoldTextActiveCheck := pathSelector_DefaultSettings.useBoldTextActive
         standardPrefixEdit.Value := pathSelector_DefaultSettings.standardEntryPrefix
         debugCheck.Value := pathSelector_DefaultSettings.enableExplorerDialogMenuDebug
         clipboardCheck.Value := pathSelector_DefaultSettings.alwaysShowClipboardmenuItem
@@ -1181,6 +1254,7 @@ ShowPathSelectorSettingsGUI(*) {
         g_pth_Settings.dopusRTPath := dopusPathEdit.Value
         g_pth_Settings.activeTabPrefix := prefixEdit.Value
         ;g_settings.activeTabSuffix := suffixEdit.Value
+        g_pth_Settings.useBoldTextActive := useBoldTextActiveCheck.Value
         g_pth_Settings.standardEntryPrefix := standardPrefixEdit.Value
         g_pth_Settings.enableExplorerDialogMenuDebug := debugCheck.Value
         g_pth_Settings.alwaysShowClipboardmenuItem := clipboardCheck.Value
@@ -2029,6 +2103,7 @@ PathSelector_SaveSettingsToFile() {
         IniWrite(g_pth_Settings.enableUIAccess ? "1" : "0", settingsFilePath, "Settings", "enableUIAccess")
         IniWrite(g_pth_Settings.maxMenuLength, settingsFilePath, "Settings", "maxMenuLength")
         IniWrite(g_pth_Settings.hideTrayIcon ? "1" : "0", settingsFilePath, "Settings", "hideTrayIcon")
+        IniWrite(g_pth_Settings.useBoldTextActive ? "1" : "0", settingsFilePath, "Settings", "useBoldTextActive")
         IniWrite(GetFavoritesDelimitedString(), settingsFilePath, "Settings", "favoritePaths")
         IniWrite(GetConditionalFavoritesDelimitedString(), settingsFilePath, "Settings", "conditionalFavorites")
 
@@ -2114,6 +2189,7 @@ PathSelector_LoadSettingsFromSettingsFilePath(settingsFilePath) {
         g_pth_Settings.enableUIAccess := IniRead(settingsFilePath, "Settings", "enableUIAccess", pathSelector_DefaultSettings.enableUIAccess)
         g_pth_settings.maxMenuLength := IniRead(settingsFilePath, "Settings", "maxMenuLength", pathSelector_DefaultSettings.maxMenuLength)
         g_pth_Settings.hideTrayIcon := IniRead(settingsFilePath, "Settings", "hideTrayIcon", pathSelector_DefaultSettings.hideTrayIcon)
+        g_pth_Settings.useBoldTextActive := IniRead(settingsFilePath, "Settings", "useBoldTextActive", pathSelector_DefaultSettings.useBoldTextActive)
         g_pth_settings.favoritePaths := StrSplit(IniRead(settingsFilePath, "Settings", "favoritePaths", ""), "|") ; Split the delimited string to an array
         g_pth_settings.conditionalFavorites := ParseConditionalFavoritesString(IniRead(settingsFilePath, "Settings", "conditionalFavorites", ""))
 
@@ -2123,6 +2199,7 @@ PathSelector_LoadSettingsFromSettingsFilePath(settingsFilePath) {
         g_pth_Settings.groupPathsByWindow := g_pth_Settings.groupPathsByWindow = "1"
         g_pth_Settings.enableUIAccess := g_pth_Settings.enableUIAccess = "1"
         g_pth_Settings.hideTrayIcon := g_pth_Settings.hideTrayIcon = "1"
+        g_pth_Settings.useBoldTextActive := g_pth_Settings.useBoldTextActive = "1"
 
         ; Convert to int where necessary
         g_pth_settings.maxMenuLength := g_pth_settings.maxMenuLength + 0
