@@ -76,7 +76,7 @@ global g_pathSelector_programName := "Explorer Dialog Path Selector"
 ;@Ahk2Exe-SetProductName %U_ProgramName%
 ;@Ahk2Exe-SetName %U_ProgramName%
 ;@Ahk2Exe-SetCopyright ThioJoe
-;@Ahk2Exe-SetDescription Press a hotkey in an Explorer dialog to show a menu to navigate to paths of other Explorer windows
+;@Ahk2Exe-SetDescription Explorer Dialog Path Selector
 
 ; Global variable to hold current settings
 global g_pth_Settings := {}
@@ -507,7 +507,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     if (!windowID || !windowClass) {
         if (debugMode) {
             ToolTip("No valid window detected")
-            Sleep(1000)
+            Sleep(3000)
             ToolTip()
         }
         return
@@ -515,15 +515,19 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
 
     if (debugMode) {
         ToolTip("Window ID: " windowID "`nClass: " windowClass)
-        Sleep(1000)
+        Sleep(2000)
         ToolTip()
     }
 
     ; Don't display menu unless it's a dialog or console window
     if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog)$") {
         if (debugMode) {
-            ToolTip("Window class does not match expected: " windowClass)
-            Sleep(1000)
+            tooltipText := "Window class does not match expected. Detected: " windowClass
+            if (windowClass = "CabinetWClass") {
+                tooltipText .= "`n`nIs this a regular Windows Explorer window? This tool is only meant for 'Save As' and 'Open' type windows."
+            }
+            ToolTip(tooltipText)
+            Sleep(4000)
             ToolTip()
         }
         return
@@ -1834,7 +1838,7 @@ ShowPathSelectorHelpWindow(*) {
     ; Display info about UI Access depending on the mode the script is running in
     elevatedTipText := ""
     if A_IsCompiled {
-        elevatedTipText := "• To make this proram work with dialogs launched by elevated processes without having to run it as admin, place the executable in a trusted location such as `"C:\Program Files\...`""
+        elevatedTipText := "• To make this program work with dialogs launched by elevated processes without having to run it as admin, place the executable in a trusted location such as `"C:\Program Files\...`""
         elevatedTipText .= "  (You do NOT need to run this exe itself as Admin for this to work.)"
     } else if !ThisScriptRunningStandalone() {
         elevatedTipText := "• To make this work with dialogs launched by elevated processes, enable UI Access via the parent script."
