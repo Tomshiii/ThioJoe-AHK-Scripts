@@ -7,10 +7,11 @@
 ; Gets all the controls of a window as objects from the Windows API, given the window's HWND
 ; Can be used as a replacement for WinGetControls() which only returns control names, this way you can get the names and HWNDs in one go
 ;    Return Type: Array of control objects with properties: Class (String), ClassNN (String), ControlID (Int), Hwnd (Int / Pointer)
-GetAllControlsAsObjects_ViaWindowsAPI(windowHwnd) {
+;    Optional Parameter: getText (Bool) - If true, will also get the text of each control and put it into a Text property
+GetAllControlsAsObjects_ViaWindowsAPI(windowHwnd, getText:=unset) {
     ; ---------------- Local Functions ----------------
     EnumChildProc(hwnd, lParam) {
-        controls := ObjFromPtrAddRef(lParam)
+        controlsArray := ObjFromPtrAddRef(lParam)
         
         ; Get control class
         classNameBuffer := Buffer(256)
@@ -25,43 +26,50 @@ GetAllControlsAsObjects_ViaWindowsAPI(windowHwnd) {
         
         ; Get control ID
         id := DllCall("GetDlgCtrlID", "Ptr", hwnd)
+
+        controlObject := { Hwnd: hwnd, Class: className, ClassNN: classNN, ControlID: id }
+
+        if (IsSet(getText) and getText) {
+            text := ControlGetText(hwnd)
+            controlObject.Text := text
+        }
         
         ; Add control info to the array
-        controls.Push({ Hwnd: hwnd, Class: className, ClassNN: classNN, ControlID: id })
+        controlsArray.Push(controlObject)
         
         return true  ; Continue enumeration
     }
     ; ------------------------------------------------
 
-    controls := []
+    controlsArray := []
 
     ; Enumerate child windows
     DllCall("EnumChildWindows",
         "Ptr", windowHwnd,
         "Ptr", CallbackCreate(EnumChildProc, "F", 2),
-        "Ptr", ObjPtr(controls)
+        "Ptr", ObjPtr(controlsArray)
     )
     
-    return controls
+    return controlsArray
 }
 
 ; Checks if a window has a control with a specific class name. Allows wildcards in the form of an asterisk (*), otherwise exact matching is done
 ;    Return Type: Bool (True/False)
 CheckWindowHasControlName(hwnd, pattern) {
     try {
-        controls := WinGetControls("ahk_id " hwnd)
+        controlsObj := WinGetControls("ahk_id " hwnd)
         
         ; Wildcard pattern matching
         if InStr(pattern, "*") {
             pattern := "^" StrReplace(pattern, "*", ".*") "$"
-            for ctrlName in controls {
+            for ctrlName in controlsObj {
                 if RegExMatch(ctrlName, pattern)
                     return true
             }
         }
         ; Exact matching
         else {
-            for ctrlName in controls {
+            for ctrlName in controlsObj {
                 if InStr(ctrlName, pattern)
                     return true
             }
@@ -98,9 +106,9 @@ ShowDirectoryPathEntryBox() {
 
 ; Get the handle of the window under the mouse cursor
 GetWindowHwndUnderMouse() {
-    MouseGetPos(unset, unset, &Windowhwnd)
+    MouseGetPos(unset, unset, &WindowhwndOut)
     ;MsgBox("Window Hwnd: " Windowhwnd)
-    return Windowhwnd
+    return WindowhwndOut
 }
 
 ; Get the class name of the control under the mouse cursor
@@ -300,4 +308,62 @@ LaunchProgramAtMouse(programTitle, xOffset := 0, yOffset := 0, exePath := "", fo
     ; Restore original settings
     SetWinDelay(originalWinDelay)
     CoordMode("Mouse", originalMouseMode)
+}
+
+; Gets the raw bytes data of a specific clipboard format, given the format's name string or ID number
+GetClipboardFormatRawData(formatName := "", formatIDInput := unset) {
+    if IsSet(formatIDInput) {
+        formatId := formatIDInput
+    } else if IsSet(formatName) {
+        formatId := DllCall("RegisterClipboardFormat", "Str", formatName, "UInt")
+        if !formatId
+            Throw("Failed to register clipboard format: " formatName)
+    } else {
+        Throw("Error in Getting clipboard format data: No format name or ID provided.")
+    }
+
+    ; Get all clipboard data
+    clipData := ClipboardAll()
+    
+    if clipData.Size = 0
+        return []
+    
+    ; Create buffer to read from
+    bufferObj := Buffer(clipData.Size)
+    DllCall("RtlMoveMemory", 
+        "Ptr", bufferObj.Ptr, 
+        "Ptr", clipData.Ptr, 
+        "UPtr", clipData.Size)
+    
+    offset := 0
+    while offset < clipData.Size {
+        ; Read format type (4 bytes)
+        currentFormat := NumGet(bufferObj, offset, "UInt")
+        
+        ; If we hit a zero format, we've reached the end
+        if currentFormat = 0
+            break
+            
+        ; Read size of this format's data block (4 bytes)
+        dataSize := NumGet(bufferObj, offset + 4, "UInt")
+        
+        ; If this is the format we want
+        if currentFormat = formatId {
+            ; Create array to hold the bytes
+            bytes := []
+            bytes.Capacity := dataSize  ; Pre-allocate for better performance
+            
+            ; Extract each byte directly from the buffer
+            loop dataSize {
+                bytes.Push(NumGet(bufferObj, offset + 8 + A_Index - 1, "UChar"))
+            }
+            
+            return bytes
+        }
+        
+        ; Move to next format block
+        offset += 8 + dataSize  ; Skip format (4) + size (4) + data block
+    }
+    
+    return []  ; Format not found
 }
