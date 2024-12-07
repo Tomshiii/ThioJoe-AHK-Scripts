@@ -861,7 +861,8 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
         addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
         addressBarClassNN := ControlGetClassNN(addressbarHwnd)
 
-        if (addressbarClassNN = "Edit2") {
+        ; Regex match if the address bar is an Edit control but not Edit1, which seems to always the file name box. But the address bar box might not always be Edit2
+        if (addressBarClassNN != "Edit1" and addressBarClassNN ~= "Edit\d+") {
             ControlSetText(path, addressBarClassNN, "ahk_id " windowHwnd)
             ControlSend("{Enter}", addressBarClassNN, "ahk_id " windowHwnd)
             ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
