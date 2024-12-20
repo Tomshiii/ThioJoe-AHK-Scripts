@@ -184,22 +184,37 @@ MouseScrollMultiplied(multiplier, forceWindowHandle:=false, targetHandleID:=unse
 ; Check if mouse is over a specific window and control. Allows for wildcards in the control name
 ; Example:          #HotIf mouseOver("ahk_exe dopus.exe", "dopus.tabctrl1")
 CheckMouseOverControl(winTitle, ctl := '') {
-    MouseGetPos(unset, unset, &hWnd, &classNN)
-    
-    ; Allow for wildcards
-    if (ctl = '*') {
-        Return WinExist(winTitle ' ahk_id' hWnd)
-    } else if InStr(ctl, '*') {
-        ctl := StrReplace(ctl, '*', '.*')
-        return WinExist(winTitle ' ahk_id' hWnd) && RegExMatch(classNN, '^' ctl '$')
-    } else {
-        Return WinExist(winTitle ' ahk_id' hWnd) && (ctl = '' || ctl = classNN)
+    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
+    try
+        MouseGetPos(unset, unset, &hWnd, &classNN)
+    catch
+        return false
+
+    ; Checks if any window exists with the desired checked title and also the hWnd of that under the mouse
+    ; Effectively checking if the window under the mouse matches title of the one passed in
+    if WinExist(winTitle ' ahk_id' hWnd) {
+        ; Sets up the ctl regex pattern by replacing standard wildcard with regex wildcard
+        if (ctl = '')
+            ctl := '.*'
+        else if InStr(ctl, '*')
+            ctl := StrReplace(ctl, '*', '.*')
+
+        ; Match classNN using the wildcard. Will also match exact matches if no wildcard
+        if RegExMatch(classNN, '^' ctl '$')
+            return true
+        else 
+            return false
     }
 }
 
 ; Optimized version for exact control matches:
 CheckMouseOverControlExact(winTitle, ctl) {
-    MouseGetPos(unset, unset, &hWnd, &classNN)
+    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
+    try
+        MouseGetPos(unset, unset, &hWnd, &classNN)
+    catch
+        return false
+
     return WinExist(winTitle " ahk_id" hWnd) && (ctl = classNN)
 }
 
@@ -213,21 +228,28 @@ CheckMouseOverControlAdvanced(winTitle, ctl := '', ctlMinWidth := 0) {
         return OutWidth > ctlMinWidth
     }
     ; ----------------------------
+    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
+    try
+        MouseGetPos(unset, unset, &hWnd, &classNN)
+    catch
+        return false
 
-    MouseGetPos(unset, unset, &hWnd, &classNN)
+    ; Checks if any window exists with the desired checked title and also the hWnd of that under the mouse
+    ; Effectively checking if the window under the mouse matches title of the one passed in
+    if WinExist(winTitle ' ahk_id' hWnd) {
+        ; Sets up the ctl regex pattern by replacing standard wildcard with regex wildcard
+        if (ctl = '')
+            ctl := '.*'
+        else if InStr(ctl, '*')
+            ctl := StrReplace(ctl, '*', '.*')
 
-    ; Main check for window and control
-    matched := false
-    if (ctl = '*') {
-        if WinExist(winTitle ' ahk_id' hWnd)
+        ; Match classNN using the wildcard
+        if RegExMatch(classNN, '^' ctl '$')
             matched := true
-    } else if InStr(ctl, '*') {
-        ctl := StrReplace(ctl, '*', '.*')
-        if WinExist(winTitle ' ahk_id' hWnd) && RegExMatch(classNN, '^' ctl '$')
-            matched := true
+        else 
+            matched := false
     } else {
-        if WinExist(winTitle ' ahk_id' hWnd) && (ctl = '' || ctl = classNN)
-            matched := true
+        return false
     }
 
     ; If window and control match, check further criteria
