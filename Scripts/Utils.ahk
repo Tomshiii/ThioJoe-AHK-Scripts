@@ -183,7 +183,7 @@ MouseScrollMultiplied(multiplier, forceWindowHandle:=false, targetHandleID:=unse
 
 ; Check if mouse is over a specific window and control. Allows for wildcards in the control name
 ; Example:          #HotIf mouseOver("ahk_exe dopus.exe", "dopus.tabctrl1")
-CheckMouseOverControl(winTitle, ctl := '') {
+CheckMouseOverControlAndWindow(winTitle, ctl := '') {
     ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
     try
         MouseGetPos(unset, unset, &hWnd, &classNN)
@@ -207,8 +207,24 @@ CheckMouseOverControl(winTitle, ctl := '') {
     }
 }
 
+CheckMouseOverControl(ctl){
+    try
+        MouseGetPos(unset, unset, unset, &classNN)
+    catch
+        return false
+    
+    if InStr(ctl, '*')
+        ctl := StrReplace(ctl, '*', '.*')
+    
+    ; Match classNN using the wildcard. Will also match exact matches if no wildcard
+    if RegExMatch(classNN, '^' ctl '$')
+        return true
+    else 
+        return false
+}
+
 ; Optimized version for exact control matches:
-CheckMouseOverControlExact(winTitle, ctl) {
+CheckMouseOverControlAndWindowExact(winTitle, ctl) {
     ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
     try
         MouseGetPos(unset, unset, &hWnd, &classNN)
@@ -216,6 +232,15 @@ CheckMouseOverControlExact(winTitle, ctl) {
         return false
 
     return WinExist(winTitle " ahk_id" hWnd) && (ctl = classNN)
+}
+
+CheckMouseOverControlExact(ctl){
+    try
+        MouseGetPos(unset, unset, unset, &classNN)
+    catch
+        return false
+
+    return (ctl = classNN)
 }
 
 ; Check if mouse is over a specific window and control (allows wildcards), with additional parameters for various properties of the control
