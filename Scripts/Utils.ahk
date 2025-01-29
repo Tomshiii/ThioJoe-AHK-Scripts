@@ -112,7 +112,7 @@ GetWindowHwndUnderMouse() {
 }
 
 ; Get the class name of the control under the mouse cursor
-GetControlClassUnderMouse(winTitle, ctl) {
+GetControlClassUnderMouse() {
     MouseGetPos(unset, unset, &hWnd, &classNN)
     return classNN
 }
@@ -206,6 +206,16 @@ CheckMouseOverControlAndWindow(winTitle, ctl := '') {
     }
 }
 
+; Optimized version for exact control matches:
+CheckMouseOverControlAndWindowExact(winTitle, ctl) {
+    MouseGetPos(unset, unset, &hWnd, &classNN)
+    if classNN = "" {
+        return false
+    }
+
+    return WinExist(winTitle " ahk_id" hWnd) && (ctl = classNN)
+}
+
 CheckMouseOverControl(ctl){
     MouseGetPos(unset, unset, unset, &classNN)
     if classNN = "" {
@@ -220,16 +230,6 @@ CheckMouseOverControl(ctl){
         return true
     else 
         return false
-}
-
-; Optimized version for exact control matches:
-CheckMouseOverControlAndWindowExact(winTitle, ctl) {
-    MouseGetPos(unset, unset, &hWnd, &classNN)
-    if classNN = "" {
-        return false
-    }
-
-    return WinExist(winTitle " ahk_id" hWnd) && (ctl = classNN)
 }
 
 CheckMouseOverControlExact(ctl){
@@ -286,6 +286,15 @@ CheckMouseOverControlAdvanced(winTitle, ctl := '', ctlMinWidth := 0) {
 CheckMouseOverProgram(programTitle) {
     MouseGetPos(unset, unset, &hWnd)
     Return WinExist(programTitle " ahk_id" hWnd)
+}
+
+; Example: CheckMouseOverSpecificWindowClass("#32770")
+CheckMouseOverSpecificWindowClass(classNNCheck) {
+    MouseGetPos(unset, unset, &hWnd)
+    ; Get the classNN of the window
+    windowClass := WinGetClass("ahk_id " hWnd)
+    ; Check if the classNN matches the one provided
+    return (windowClass == classNNCheck)
 }
 
 ; Launch any program and move it to the mouse position, with parameters for relative offset vs mouse position
