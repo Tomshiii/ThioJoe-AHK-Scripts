@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0.19
 
 ; Various utility functions. This script doesn't run anything by itself, but is meant to be included in other scripts
 
@@ -184,11 +184,10 @@ MouseScrollMultiplied(multiplier, forceWindowHandle:=false, targetHandleID:=unse
 ; Check if mouse is over a specific window and control. Allows for wildcards in the control name
 ; Example:          #HotIf mouseOver("ahk_exe dopus.exe", "dopus.tabctrl1")
 CheckMouseOverControlAndWindow(winTitle, ctl := '') {
-    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
-    try
-        MouseGetPos(unset, unset, &hWnd, &classNN)
-    catch
+    MouseGetPos(unset, unset, &hWnd, &classNN)
+    if classNN = "" {
         return false
+    }
 
     ; Checks if any window exists with the desired checked title and also the hWnd of that under the mouse
     ; Effectively checking if the window under the mouse matches title of the one passed in
@@ -208,11 +207,11 @@ CheckMouseOverControlAndWindow(winTitle, ctl := '') {
 }
 
 CheckMouseOverControl(ctl){
-    try
-        MouseGetPos(unset, unset, unset, &classNN)
-    catch
+    MouseGetPos(unset, unset, unset, &classNN)
+    if classNN = "" {
         return false
-    
+    }
+
     if InStr(ctl, '*')
         ctl := StrReplace(ctl, '*', '.*')
     
@@ -225,21 +224,16 @@ CheckMouseOverControl(ctl){
 
 ; Optimized version for exact control matches:
 CheckMouseOverControlAndWindowExact(winTitle, ctl) {
-    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
-    try
-        MouseGetPos(unset, unset, &hWnd, &classNN)
-    catch
+    MouseGetPos(unset, unset, &hWnd, &classNN)
+    if classNN = "" {
         return false
+    }
 
     return WinExist(winTitle " ahk_id" hWnd) && (ctl = classNN)
 }
 
 CheckMouseOverControlExact(ctl){
-    try
-        MouseGetPos(unset, unset, unset, &classNN)
-    catch
-        return false
-
+    MouseGetPos(unset, unset, unset, &classNN)
     return (ctl = classNN)
 }
 
@@ -253,11 +247,10 @@ CheckMouseOverControlAdvanced(winTitle, ctl := '', ctlMinWidth := 0) {
         return OutWidth > ctlMinWidth
     }
     ; ----------------------------
-    ; Use try block because MouseGetPos can throw exception for windows that don't have names for some classNN
-    try
-        MouseGetPos(unset, unset, &hWnd, &classNN)
-    catch
+    MouseGetPos(unset, unset, &hWnd, &classNN)
+    if classNN = "" {
         return false
+    }
 
     ; Checks if any window exists with the desired checked title and also the hWnd of that under the mouse
     ; Effectively checking if the window under the mouse matches title of the one passed in
