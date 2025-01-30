@@ -113,13 +113,13 @@ GetWindowHwndUnderMouse() {
 
 ; Get the class name of the control under the mouse cursor
 GetControlClassUnderMouse() {
-    MouseGetPos(unset, unset, &hWnd, &classNN)
+    MouseGetPos(unset, unset, unset, &classNN)
     return classNN
 }
 
 ; Get the Handle/Hwnd of the specific control under the mouse cursor (not the window's handle)
 GetControlUnderMouseHandleID() {
-    MouseGetPos(unset, unset, &windowHandleID, &controlHandleID, 2) ; If controlHandleID is not provided, it will be an empty string
+    MouseGetPos(unset, unset, unset, &controlHandleID, 2) ; If controlHandleID is not provided, it will be an empty string
     return controlHandleID
 }
 
@@ -416,3 +416,21 @@ GetClipboardFormatRawData(formatName := "", formatIDInput := unset) {
     
     return []  ; Format not found
 }
+
+; ------------------------- High precision timer functions --------------------
+; Note: Using these as function calls will add significant overhead if measuring small time intervals (Under ~0.1 ms)
+StartTimer() {
+    DllCall("QueryPerformanceFrequency", "Int64*", &freq := 0) ; Get the frequency of the counter
+    DllCall("QueryPerformanceCounter", "Int64*", &CounterBefore := 0)
+    return CounterBefore
+}
+
+EndTimer(CounterBefore, showMsgBox := true) {
+    DllCall("QueryPerformanceCounter", "Int64*", &CounterAfter := 0)
+    DllCall("QueryPerformanceFrequency", "Int64*", &freq := 0) ; Call this again to avoid having to pass it as a parameter
+    if (showMsgBox){
+        MsgBox("Elapsed QPC time is " . (CounterAfter - CounterBefore) / freq * 1000 " ms")
+    }
+    return (CounterAfter - CounterBefore) / freq * 1000
+}
+; -------------------------------------------------------------------------------
