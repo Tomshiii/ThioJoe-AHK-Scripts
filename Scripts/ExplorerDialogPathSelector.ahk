@@ -61,7 +61,7 @@ pathSelector_SystemTraySettings := {
 
 ; Set global variables about the program and compiler directives. These use regex to extract data from the lines above them (A_PriorLine)
 ; Keep the line pairs together!
-global g_pathSelector_version := "1.3.1.0"
+global g_pathSelector_version := "1.3.2.0"
 ;@Ahk2Exe-Let ProgramVersion=%A_PriorLine~U)^(.+"){1}(.+)".*$~$2%
 
 global g_pathSelector_programName := "Explorer Dialog Path Selector"
@@ -846,6 +846,30 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     }
     
     NavigateUsingAddressbar(path, windowHwnd) {
+        ; ----------------- Local functions -----------------
+        CheckAddressbarReadyAndNavigate(attemptNumber := 1) {
+            addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
+            addressBarClassNN := ControlGetClassNN(addressbarHwnd)
+
+            ; Regex match if the address bar is an Edit control but not Edit1, which seems to always the file name box. But the address bar box might not always be Edit2
+            if (addressBarClassNN != "Edit1" and addressBarClassNN ~= "Edit\d+") {
+                DoNavigation(addressBarClassNN, addressbarHwnd)
+            } else if (attemptNumber <= 3) {
+                ; Try waiting a bit longer for the address bar to be ready
+                Sleep(50)
+                CheckAddressbarReadyAndNavigate(attemptNumber + 1)
+            } else {
+                OutputDebug("`n`nAddress bar didn't match expected class name. Found ClassNN: " addressBarClassNN)
+            }
+        }
+        ; ----------------
+        DoNavigation(_addressbarClassNN, _addressbarHwnd) {
+            ControlSetText(path, _addressbarClassNN, "ahk_id " windowHwnd)
+            ControlSend("{Enter}", _addressbarClassNN, "ahk_id " windowHwnd)
+            ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
+        }
+        ; ----------------- End of local functions -----------------
+
         WinWaitActive("ahk_id " windowHwnd)
         ; Try getting the text from the Edit1 control
         originalFileName := ""
@@ -856,19 +880,10 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
             OutputDebug("`nError getting or setting Edit1 control text. Message: " err.Message)
         }
 
+        ; Move focus to Address Bar
         Send("!{d}") ; For some reason doesn't seem to work sending to the window
         Sleep(50)
-        addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
-        addressBarClassNN := ControlGetClassNN(addressbarHwnd)
-
-        ; Regex match if the address bar is an Edit control but not Edit1, which seems to always the file name box. But the address bar box might not always be Edit2
-        if (addressBarClassNN != "Edit1" and addressBarClassNN ~= "Edit\d+") {
-            ControlSetText(path, addressBarClassNN, "ahk_id " windowHwnd)
-            ControlSend("{Enter}", addressBarClassNN, "ahk_id " windowHwnd)
-            ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
-        } else {
-            OutputDebug("`n`nAddress bar didn't match expected class name. Found ClassNN: " addressBarClassNN)
-        }
+        CheckAddressbarReadyAndNavigate()
 
         ; Restore the original file name if it was there
         if (originalFileName != "") {
