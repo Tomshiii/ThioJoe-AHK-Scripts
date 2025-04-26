@@ -417,6 +417,29 @@ GetClipboardFormatRawData(formatName := "", formatIDInput := unset) {
     return []  ; Format not found
 }
 
+TooltipWithDelayedRemove(text, delayMs, x := unset, y := unset) {
+    if (IsSet(x) && IsSet(y)) {
+        ToolTip(text, x, y)
+    } else {
+        ToolTip(text)
+    }
+    
+    RemoveToolTip(delayMs)
+}
+
+RemoveToolTip(delayMs := 0) {
+    ; Local function to use in the timer callback
+    SetNoTooltip() {
+        ToolTip()  ; Calling ToolTip with no parameters removes it
+    }
+
+    if delayMs > 0 {
+        SetTimer(SetNoTooltip, -1 * delayMs) 
+    } else {
+        SetNoTooltip()
+    }
+}
+
 ; ------------------------- High precision timer functions --------------------
 ; Note: Using these as function calls will add significant overhead if measuring small time intervals (Under ~0.1 ms)
 StartTimer() {

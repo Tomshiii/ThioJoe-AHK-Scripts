@@ -73,7 +73,7 @@ global g_pathSelector_programName := "Explorer Dialog Path Selector"
 ;    - If you enable the UI Access argument and DON'T sign it, Windows won't run it and will give an error message, therefore not recommended to set the last argument to '1' unless you will self-sign the exe or have a trusted certificate
 ;    - If you do sign it, it will still run even if not in a trusted location, but it just won't work in elevated dialog Windows
 ; Note: Though this may have UI Access argument as 0, for my releases I set it to 1 and sign the exe
-;@Ahk2Exe-UpdateManifest 0, %U_ProgramName%, %U_ProgramVersion%, 0
+;@Ahk2Exe-UpdateManifest 0, %U_ProgramName%, %U_ProgramVersion%, 1
 ;@Ahk2Exe-SetVersion %U_ProgramVersion%
 ;@Ahk2Exe-SetProductName %U_ProgramName%
 ;@Ahk2Exe-SetName %U_ProgramName%
@@ -807,8 +807,10 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     NavigateDialog(path, windowHwnd, dialogInfo) {
         
         if (dialogInfo.Type = "ModernDialog") {
+            OutputDebug("`n`nModern dialog detected. Navigating using address bar.")
             NavigateUsingAddressbar(path, windowHwnd)
         } else if (dialogInfo.Type = "HasEditControl") {
+            OutputDebug("`n`nLegacy dialog detected. Navigating using edit control.")
             WinActivate("ahk_id " windowID)
             WM_SETTEXT := 0x000C
 
@@ -841,6 +843,7 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
             }
 
         } else if (dialogInfo.Type = "FolderBrowserDialog") {
+            OutputDebug("`n`nFolderBrowserDialog detected. Navigating using legacy folder dialog.")
             NavigateLegacyFolderDialog(path, dialogInfo.ControlHwnd)
         }
     }
@@ -869,7 +872,8 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
             ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
         }
         ; ----------------- End of local functions -----------------
-
+        ; Activate the window
+        WinActivate("ahk_id " windowHwnd)
         WinWaitActive("ahk_id " windowHwnd)
         ; Try getting the text from the Edit1 control
         originalFileName := ""
@@ -908,8 +912,10 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     }
 
     DetectDialogType(hwnd) {
-        ; Wait for the dialog window with class #32770 to be active
+        ; Activate the window and wait
+        WinActivate("ahk_id " hwnd)
         if !WinWaitActive("ahk_class #32770", unset, 10) {
+            OutputDebug("Dialog window never activated, timed out.")
             return 0
         }
 
