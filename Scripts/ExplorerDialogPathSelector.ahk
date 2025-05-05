@@ -22,6 +22,16 @@ SetWorkingDir(lineDir)
 #Include <Classes\switchTo>
 #Include <Classes\Settings>
 
+try {
+    UserSettings := UserPref()
+    if UserSettings.Use_MButton = false {
+        PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
+    }
+    UserSettings := ""
+} catch {
+    Notify.Show('Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
+}
+
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
 class pathSelector_DefaultSettings {
@@ -644,10 +654,21 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Timeline Renders", WinGet.pathU(getProj.Dir "\..\timeline renders"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
     }
     if (g_pth_Settings.favoritePaths.Length > 0) {
-        InsertMenuItem(CurrentLocations, "Favorites", unset, unset, unset, unset) ; Header
+        InsertMenuItem(CurrentLocations, "Assets", unset, unset, unset, unset) ; Header
         for favoritePath in g_pth_Settings.favoritePaths {
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix favoritePath, favoritePath, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
-            hasItems := true
+            if DirExist(favoritePath) {
+                InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix favoritePath, favoritePath, A_WinDir . "\system32\imageres.dll", "180", false)
+                hasItems := true
+            }
+        }
+        otherDirs := ["W:\work\_Main Channel"]
+        if hasItems = true {
+            InsertMenuItem(CurrentLocations, "Favourites", unset, unset, unset, unset) ; Header
+            for v in otherDirs {
+                if DirExist(v) {
+                    InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix v, v, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
+                }
+            }
         }
     }
 
