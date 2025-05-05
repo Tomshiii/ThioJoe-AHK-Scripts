@@ -16,10 +16,11 @@ SplitPath(A_LineFile,, &lineDir)
 SetWorkingDir(lineDir)
 ; Set the path to the RemoteTreeView class file as necessary. Here it is up one directory then in the Lib folder. Necessary to navigate legacy folder dialogs.
 ; Can be acquired from: https://github.com/ThioJoe/AHK-RemoteTreeView-V2/blob/main/RemoteTreeView.ahk
-#Include "..\Lib\RemoteTreeView.ahk"
+#Include <Other\ThioJoe\Lib\RemoteTreeView>
 #Include <Classes\winGet>
 #Include <Classes\ptf>
 #Include <Classes\switchTo>
+#Include <Classes\Settings>
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
@@ -393,6 +394,10 @@ GetDOpusPaths() {
 
 ; Display the menu
 DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must accept the hotkey as its first parameter
+    UserSettings := UserPref()
+    if UserSettings.Use_Thio_MButton = false || UserSettings.Use_Thio_MButton = "false"
+        return
+
     getMouse := obj.MousePos()
 
     ; ------------------------- LOCAL FUNCTIONS -------------------------

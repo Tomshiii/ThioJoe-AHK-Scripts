@@ -398,7 +398,6 @@ FodyWeavers.xsd
 *.sln.iml
 
 # My excludes
-*.ini
 Test.*
 *.bak
 *.exe
