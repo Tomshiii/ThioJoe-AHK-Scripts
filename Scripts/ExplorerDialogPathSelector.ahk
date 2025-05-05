@@ -12,10 +12,14 @@
 
 #Requires AutoHotkey v2.0
 #SingleInstance force
-SetWorkingDir(A_ScriptDir)
+SplitPath(A_LineFile,, &lineDir)
+SetWorkingDir(lineDir)
 ; Set the path to the RemoteTreeView class file as necessary. Here it is up one directory then in the Lib folder. Necessary to navigate legacy folder dialogs.
 ; Can be acquired from: https://github.com/ThioJoe/AHK-RemoteTreeView-V2/blob/main/RemoteTreeView.ahk
 #Include "..\Lib\RemoteTreeView.ahk"
+#Include <Classes\winGet>
+#Include <Classes\ptf>
+#Include <Classes\switchTo>
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
@@ -88,6 +92,8 @@ global g_pth_SettingsFile := SettingsFile(
     "ExplorerDialogPathSelector-Settings.ini", ; Name of the settings file
     "Explorer-Dialog-Path-Selector"            ; Name of the folder in AppData where the settings file will be stored
 )
+g_pth_SettingsFile.filePath := ptf.lib "\Other\ThioJoe\ExplorerDialogPathSelector-Settings.ini"
+g_pth_SettingsFile.directoryPath := ptf.lib "\Other\ThioJoe\"
 
 InitializePathSelectorSettings()
 
@@ -387,6 +393,8 @@ GetDOpusPaths() {
 
 ; Display the menu
 DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must accept the hotkey as its first parameter
+    getMouse := obj.MousePos()
+
     ; ------------------------- LOCAL FUNCTIONS -------------------------
     ProcessCLSIDPaths(clsidInputPath) {
         returnObj := {displayText: "", clsidNewPath: ""}
@@ -401,7 +409,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
             if (SubStr(clsidInputPath, -11) = ".library-ms") {
                 ; Remove the ".library-ms" extension or else it won't work when navigating
                 clsidNewPath := SubStr(clsidInputPath, 1, -11)
-                
+
                 ; If there are CLSIDs in the path, convert them to folder names to show full context instead of just showing the final CLSID folder name
                 ; Example: "::{031E4825-7B94-4DC3-B131-E946B44C8DD5}\Music" -> "Libraries\Music"
                 ;     And show Libraries\Music instead of just Music
@@ -449,7 +457,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         boldSansSerifStartUpper := 0x1D5D4
         boldSansSerifStartLower := 0x1D5EE
         boldSansSerifNumbers := 0x1D7EC
-    
+
         Loop len {
             char := SubStr(inputText, A_Index, 1)
             charCode := Ord(char)
@@ -526,7 +534,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
             menuObj.Disable(currentMenuNum "&")
             return
         }
-        
+
         if (IsSet(iconPath) and iconPath and IsSet(iconIndex) and iconIndex) {
             menuObj.SetIcon(currentMenuNum "&", iconPath, iconIndex)
         }
@@ -555,18 +563,18 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
 
     ; Detect windows with error handling
     try {
-        windowID := WinGetID("a")
-        windowClass := WinGetClass("a")
-        windowHwnd := WinExist("a")
-        windowExe := WinGetProcessName("a")
+        windowID := WinGetID(getMouse.win)
+        windowClass := WinGetClass(getMouse.win)
+        windowHwnd := WinExist(getMouse.win)
+        windowExe := WinGetProcessName(getMouse.win)
     } catch as err {
         ; If we can't get window info, wait briefly and try once more
         Sleep(25)
         try {
-            windowID := WinGetID("a")
-            windowClass := WinGetClass("a")
-            windowHwnd := WinExist("a")
-            windowExe := WinGetProcessName("a")
+            windowID := WinGetID(getMouse.win)
+            windowClass := WinGetClass(getMouse.win)
+            windowHwnd := WinExist(getMouse.win)
+            windowExe := WinGetProcessName(getMouse.win)
         } catch as err {
             if (debugMode) {
                 ToolTip("Unable to detect active window")
@@ -594,12 +602,12 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     }
 
     ; Don't display menu unless it's a dialog or console window
-    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog)$") {
+    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog|CabinetWClass)$") || !InStr(getMouse.control, "DirectUIHWND", true) {
         if (debugMode) {
             tooltipText := "Window class does not match expected. Detected: " windowClass
-            if (windowClass = "CabinetWClass") {
+            /* if (windowClass = "CabinetWClass") {
                 tooltipText .= "`n`nIs this a regular Windows Explorer window? This tool is only meant for 'Save As' and 'Open' type windows."
-            }
+            } */
             ToolTip(tooltipText)
             Sleep(4000)
             ToolTip()
@@ -620,6 +628,16 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     currentMenuNum := 0 ; Used to keep track of the current menu item number so we can refer to each item by index like "1&" in case of duplicate path entries
 
     ; Add favorite paths if there are any
+    if WinExist("ahk_exe Adobe Premiere Pro (Beta).exe") || WinExist("ahk_exe Adobe Premiere Pro.exe") {
+        InsertMenuItem(CurrentLocations, "Premiere Project", unset, unset, unset, unset) ; Header
+        getProj := WinGet.ProjPath()
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Project Path", WinGet.pathU(getProj.Dir "\.."), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "SFX", WinGet.pathU(getProj.Dir "\..\audio\sfx"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Videos", WinGet.pathU(getProj.Dir "\..\videos"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Renders\Draft", WinGet.pathU(getProj.Dir "\..\renders\draft"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Renders\Final", WinGet.pathU(getProj.Dir "\..\renders\final"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+        InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Timeline Renders", WinGet.pathU(getProj.Dir "\..\timeline renders"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+    }
     if (g_pth_Settings.favoritePaths.Length > 0) {
         InsertMenuItem(CurrentLocations, "Favorites", unset, unset, unset, unset) ; Header
         for favoritePath in g_pth_Settings.favoritePaths {
@@ -697,13 +715,13 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         for lister, listerPaths in listersMap {
             listers.Push(listerPaths)
         }
-        
+
         windowNum := 1
         for listerPaths in listers {
             ; Add a separator if we had favorites and have Directory Opus paths to show
             if (hasItems and paths.Length > 0)
                 InsertMenuItem(CurrentLocations, "", unset, unset, unset, unset) ; Separator
-            
+
             headerText := "Opus Window " windowNum
             InsertMenuItem(CurrentLocations, headerText, unset, unset, unset, unset) ; Header
 
@@ -772,7 +790,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
         menuText := g_pth_Settings.standardEntryPrefix path Chr(0x200B) ; Add zero-with space as a janky way to make the menu item unique so it doesn't overwrite the icon of previous items with same path
         InsertMenuItem(CurrentLocations, menuText, path, A_WinDir . "\system32\imageres.dll", "-5301", false) ; Path (Clipboard)
         hasItems := true
-        
+
     } else if g_pth_Settings.alwaysShowClipboardmenuItem = true {
         if (hasItems)
             InsertMenuItem(CurrentLocations, "", unset, unset, unset) ; Separator
@@ -805,7 +823,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
 PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowClass, windowID) {
     ; ------------------------- LOCAL FUNCTIONS -------------------------
     NavigateDialog(path, windowHwnd, dialogInfo) {
-        
+
         if (dialogInfo.Type = "ModernDialog") {
             OutputDebug("`n`nModern dialog detected. Navigating using address bar.")
             NavigateUsingAddressbar(path, windowHwnd)
@@ -847,7 +865,7 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
             NavigateLegacyFolderDialog(path, dialogInfo.ControlHwnd)
         }
     }
-    
+
     NavigateUsingAddressbar(path, windowHwnd) {
         ; ----------------- Local functions -----------------
         CheckAddressbarReadyAndNavigate(attemptNumber := 1) {
@@ -969,7 +987,7 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
 
         ; Select the text in the box and delete it because otherwise it appends it
         Sleep(50)
-        Send("^a") 
+        Send("^a")
         Sleep(20)
         Send("{Del}")
         ; Send the path. Add a backslash just in case - the dialog seems to accept it
@@ -978,11 +996,14 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
         Send("{Enter}")
         Sleep(20)
         ; Remove the text in the box because it doesn't remove it automatically
-        Send("^a") 
+        Send("^a")
         Sleep(20)
         Send("{Delete}")
         return
 
+    }
+    else if (windowClass = "CabinetWClass") {
+        switchTo.Path(f_path, windowID)
     } else { ; Default: #32770 or other compatible dialog
         ; Check if it's a legacy dialog
         if (dialogInfo := DetectDialogType(windowID)) {
@@ -1174,7 +1195,7 @@ ShowPathSelectorSettingsGUI(*) {
     ; Bring up conditional favorites GUI - Button
     conditionalFavoritesBtn := settingsGui.AddButton("xp+130 yp+0 w150 h30", "Conditional Favorites")
     conditionalFavoritesBtn.OnEvent("Click", (*) => ShowConditionalFavoritesGui())
-    
+
     ; Debug Mode - Checkbox
     debugCheck := settingsGui.AddCheckbox("xm y+15", "Enable Debug Mode")
     debugCheck.Value := g_pth_Settings.enableExplorerDialogMenuDebug
@@ -1246,7 +1267,7 @@ ShowPathSelectorSettingsGUI(*) {
     labelKeepOnTopCheckTooltipText := "Keep this window always on top of other windows.`nGood for keeping it visible while testing settings.`n`n(Note: This checkbox setting is not saved.)"
     AddTooltipToControl(hTT, keepOnTopCheck.Hwnd, labelKeepOnTopCheckTooltipText)
 
-    
+
     ; --------- Bottom Buttons ---------- See positioning cheatsheet: https://www.reddit.com/r/AutoHotkey/comments/1968fq0/a_cheatsheet_for_building_guis_using_relative/
     buttonsY := "y+20"
     ; Reset button
@@ -1414,19 +1435,19 @@ ShowConditionalFavoritesGui(*) {
     )
     ; Track currently edited row
     currentRowNum := 0
-    
+
     ; Create the main window
     pathGui := Gui("+Resize +MinSize600x500", "Conditional Favorites Manager")
     pathGui.OnEvent("Size", GuiResize)
     pathGui.SetFont("s10", "Segoe UI")
-    
+
     ; Add ListView to show existing conditions
     pathGui.AddText("w580", "Conditional Favorites Rules:")
     listView := pathGui.AddListView("w580 h200 vConditionsList", ["#", "Condition Type", "Condition Values", "Paths"])
 
     ; Add label to show which is the currently selected entry
     labelActiveSelection := pathGui.AddText("w580", "Currently Editing: [None]")
-    
+
     ; Add buttons for managing entries - Add events separately so we can create a new object variable for each button
     addBtn := pathGui.AddButton("w80", "Add New")
     addBtn.OnEvent("Click", AddEntry)
@@ -1436,10 +1457,10 @@ ShowConditionalFavoritesGui(*) {
     removeBtn.OnEvent("Click", RemoveEntry)
     helpBtn := pathGui.AddButton("x+10 yp w80", "Help")
     helpBtn.OnEvent("Click", ShowConditionalFavoritesHelpWindow)
-    
+
     ; Add edit panel (initially disabled)
     grpBox := pathGui.AddGroupBox("xs w580 h220", "Entry Details")
-    
+
     ; Condition Type dropdown
     pathGui.AddText("xp+10 yp+20", "Condition Value Type:")
     typeDropdown := pathGui.AddDropDownList("w200 vConditionType Choose1", [ConditionType.DialogOwnerExe.FriendlyName, ConditionType.CurrentDialogPath.FriendlyName])
@@ -1447,15 +1468,15 @@ ShowConditionalFavoritesGui(*) {
     ; Condition Type Description text - Shows next to the dropdown
     typeDescription := pathGui.AddText("x+10 yp+10 w150 +Wrap", ConditionType.CurrentDialogPath.Description)
     ShowConditionTypeDescription()  ; Show description for the default selected type
-    
+
     ; Condition Values
     conditionValuesLabel := pathGui.AddText("xs+10 yp+40", "Condition Values (one per line):")
     valuesEdit := pathGui.AddEdit("w560 h60 vConditionValues Multi VScroll", "")
-    
+
     ; Paths
     pathsEditLabel := pathGui.AddText("xs+10 y+10", "Paths to show when any of the condition values match (one per line):")
     pathsEdit := pathGui.AddEdit("w560 h60 vPaths Multi VScroll", "")
-    
+
     ; Main buttons
     saveBtn := pathGui.AddButton("xs yp+15 w80", "Save")
     saveBtn.OnEvent("Click", SaveAndClose)
@@ -1463,7 +1484,7 @@ ShowConditionalFavoritesGui(*) {
     cancelBtn.OnEvent("Click", (*) => pathGui.Destroy())
     applyBtn := pathGui.AddButton("x+10 yp w80", "Apply")
     applyBtn.OnEvent("Click", ValidateAndApplyEntry)
-        
+
     ; Initially disable edit panel controls
     EnableEditPanel(false)
 
@@ -1480,7 +1501,7 @@ ShowConditionalFavoritesGui(*) {
     initialHeight := grpBoxY + grpBoxHeight + 75
 
     PopulateListView()
-    
+
     ; Show the GUI
     pathGui.Show("w" initialWindowWidth " h" initialHeight)
 
@@ -1552,7 +1573,7 @@ ShowConditionalFavoritesGui(*) {
         }
         return ""
     }
-    
+
     ; Function to enable/disable edit panel
     EnableEditPanel(enable := true) {
         typeDropdown.Enabled := enable
@@ -1565,7 +1586,7 @@ ShowConditionalFavoritesGui(*) {
         labelActiveSelection.Value := "Currently Editing: #" num
         labelActiveSelection.SetFont("s10 Bold cRed")
     }
-  
+
     ; Handle adding new entry
     AddEntry(*) {
         EnableEditPanel(true)
@@ -1583,10 +1604,10 @@ ShowConditionalFavoritesGui(*) {
         pendingConditionalFavorites.Push(entry)
         ; Add new entry to ListView
         PopulateListView()
-        ; Update the current 
+        ; Update the current
         UpdateActiveSelectedRow(entry.Index)
     }
-    
+
     ; Handle editing selected entry
     EditEntry(*) {
         if (currentRowNum := listView.GetNext()) {
@@ -1598,7 +1619,7 @@ ShowConditionalFavoritesGui(*) {
             UpdateActiveSelectedRow(entry.Index)
         }
     }
-    
+
     ; Handle removing selected entry
     RemoveEntry(*) {
         if (row := listView.GetNext()) {
@@ -1631,7 +1652,7 @@ ShowConditionalFavoritesGui(*) {
                     return
                 }
             }
-            
+
             ; Validate paths
             for path in entry.Paths {
                 if (!ValidatePathCharacters(path)) {
@@ -1639,7 +1660,7 @@ ShowConditionalFavoritesGui(*) {
                     return
                 }
             }
-            
+
             ; Add to array if both values and paths are provided
             if (entry.ConditionValues.Length > 0 && entry.Paths.Length > 0) {
                 pendingConditionalFavorites[currentlyEditedRow] := entry
@@ -1651,7 +1672,7 @@ ShowConditionalFavoritesGui(*) {
             PopulateListView()
         }
     }
-   
+
     SaveAndClose(*) {
         ; If any entry is being edited, apply it
         if (currentlyEditedRow != -1) {
@@ -1673,7 +1694,7 @@ ShowConditionalFavoritesGui(*) {
         g_pth_Settings.conditionalFavorites := pendingConditionalFavorites
         pathGui.Destroy()
     }
-    
+
     ; Helper function to split and trim text into array
     SplitAndTrim(text) {
         arr := []
@@ -1684,7 +1705,7 @@ ShowConditionalFavoritesGui(*) {
         }
         return arr
     }
-    
+
     ; Helper function to join array into multiline text
     Join(arr) {
         text := ""
@@ -1805,12 +1826,12 @@ ShowConditionalFavoritesHelpWindow(*) {
     ; Supported Conditions Section
     conditionsHeader := helpGui.AddText("xm y+20 " txtWStr " h20", "Supported Conditions:")
     conditionsHeader.SetFont("s10 bold underline")
-    
+
     conditionLabel1 := helpGui.AddText("xm+15 y+5 " txtWStr,  "• " ConditionType.DialogOwnerExe.FriendlyName)
     conditionLabel1.SetFont("s10 bold")
     conditionDesc1 := helpGui.AddText("xm+30 y+2 " txtWStr, "When the dialog window was launched by a certain program, based on the program's executable file name.")
     conditionDesc1.Move(unset, unset, WidthForMargin(winWidth, conditionDesc1, 20))
-    
+
     conditionLabel2 := helpGui.AddText("xm+15 y+10 " txtWStr, "• " ConditionType.CurrentDialogPath.FriendlyName)
     conditionLabel2.SetFont("s10 bold")
     conditionDesc2 := helpGui.AddText("xm+30 y+2 " txtWStr " +Wrap", "When the current path of the dialog matches a specified path you set.")
@@ -1820,7 +1841,7 @@ ShowConditionalFavoritesHelpWindow(*) {
     valuesHeader := helpGui.AddText("xm y+20 " txtWStr " h20", "Condition Values:")
     valuesHeader.SetFont("s10 bold underline")
     helpGui.AddText("xm y+5 " txtWStr, "These let you define what will trigger the conditional favorite paths to show.")
-    
+
     ; --- Notes
     notesText := helpGui.AddText("xm y+10 " txtWStr " h20", "Notes:")
     notesText.SetFont("italic")
@@ -1869,20 +1890,20 @@ ShowConditionalFavoritesHelpWindow(*) {
 ShowFavoritePathsGui(*) {
     ; Create the main window
     pathGui := Gui("+Resize +MinSize400x300", "Favorite Paths Manager")
-    
+
     ; Add instructions text
     pathGui.AddText(, "Enter folder paths to always show (one per line):")
-    
+
     ; Add multi-line edit control with scrollbars
     editPaths := pathGui.AddEdit("vPaths r15 w400 Multi VScroll", "")
-    
+
     ; Create a horizontal button layout using a GroupBox
     buttonGroup := pathGui.AddGroupBox("w400 h50", "")
-    
+
     ; Add OK and Cancel buttons
     saveBtn := pathGui.AddButton("xp+20 yp+15 w80", "OK").OnEvent("Click", SavePaths)
     cancelBtn := pathGui.AddButton("x+10 yp w80", "Cancel").OnEvent("Click", (*) => pathGui.Destroy())
-    
+
     ; Populate edit control with existing paths
     if g_pth_settings.HasProp("favoritePaths") && g_pth_settings.favoritePaths.Length > 0 {
         existingPaths := ""
@@ -1891,15 +1912,15 @@ ShowFavoritePathsGui(*) {
         }
         editPaths.Value := RTrim(existingPaths, "`n")
     }
-    
+
     ; Show the GUI
     pathGui.Show()
-    
+
     ; Handle saving paths
     SavePaths(*) {
         ; Get the paths from the edit control
         rawPaths := editPaths.Value
-        
+
         ; Split into array and remove empty lines
         pathArray := []
         for path in StrSplit(rawPaths, "`n", "`r") {
@@ -1915,10 +1936,10 @@ ShowFavoritePathsGui(*) {
                 return
             }
         }
-        
+
         ; Update the settings
         g_pth_settings.favoritePaths := pathArray
-        
+
         ; Close the GUI
         pathGui.Destroy()
     }
@@ -2100,7 +2121,7 @@ PathSelector_SaveSettingsToFile() {
                 j++
             }
             conditionalFavoritesString .= "||"
-    
+
             j := 0
             for path in entry.Paths {
                 conditionalFavoritesString .= path
@@ -2204,7 +2225,7 @@ PathSelector_LoadSettingsFromSettingsFilePath(settingsFilePath) {
                     } else if (i = 2) { ; Condition values
                         conditionValues := StrSplit(part, "|")
                     } else { ; Paths
-                        paths := StrSplit(part, "|") 
+                        paths := StrSplit(part, "|")
                     }
                 }
                 conditionalFavorites.Push({
@@ -2217,11 +2238,11 @@ PathSelector_LoadSettingsFromSettingsFilePath(settingsFilePath) {
             }
             entryIndex++
         }
-    
+
         return conditionalFavorites
     }
     ; -------------------------------------------------------------------------
-    
+
     if FileExist(settingsFilePath) {
         ; Load each setting from the INI file
         g_pth_Settings.dialogMenuHotkey := IniRead(settingsFilePath, "Settings", "dialogMenuHotkey", pathSelector_DefaultSettings.dialogMenuHotkey)
