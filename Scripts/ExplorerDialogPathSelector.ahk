@@ -642,19 +642,23 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     hasItems := false
     currentMenuNum := 0 ; Used to keep track of the current menu item number so we can refer to each item by index like "1&" in case of duplicate path entries
 
-    ; Add favorite paths if there are any
+    ;// add prem values
     if WinExist("ahk_exe Adobe Premiere Pro (Beta).exe") || WinExist("ahk_exe Adobe Premiere Pro.exe") {
         getProj := WinGet.ProjPath()
         if getProj != false {
+            prPrjPaths := Map(
+                WinGet.pathU(getProj.Dir "\.."),               "Project Path",    WinGet.pathU(getProj.Dir "\..\audio\sfx"),        "SFX",
+                WinGet.pathU(getProj.Dir "\..\videos"),        "Videos",          WinGet.pathU(getProj.Dir "\..\renders\draft"),    "Renders\Draft",
+                WinGet.pathU(getProj.Dir "\..\renders\final"), "Renders\Final",   WinGet.pathU(getProj.Dir "\..\timeline renders"), "Timeline Renders"
+            )
             InsertMenuItem(CurrentLocations, "Premiere Project", unset, unset, unset, unset) ; Header
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Project Path", WinGet.pathU(getProj.Dir "\.."), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "SFX", WinGet.pathU(getProj.Dir "\..\audio\sfx"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Videos", WinGet.pathU(getProj.Dir "\..\videos"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Renders\Draft", WinGet.pathU(getProj.Dir "\..\renders\draft"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Renders\Final", WinGet.pathU(getProj.Dir "\..\renders\final"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
-            InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix "Timeline Renders", WinGet.pathU(getProj.Dir "\..\timeline renders"), ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+            for k in prPrjPaths {
+                if DirExist(k)
+                    InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix prPrjPaths.Get(k), k, ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+            }
         }
     }
+    ; Add favorite paths if there are any
     if (g_pth_Settings.favoritePaths.Length > 0) {
         InsertMenuItem(CurrentLocations, "Assets", unset, unset, unset, unset) ; Header
         for favoritePath in g_pth_Settings.favoritePaths {
