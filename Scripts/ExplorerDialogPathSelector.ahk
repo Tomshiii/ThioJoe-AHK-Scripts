@@ -22,16 +22,6 @@ SetWorkingDir(lineDir)
 #Include <Classes\switchTo>
 #Include <Classes\Settings>
 
-try {
-    UserSettings := UserPref()
-    if UserSettings.Use_MButton = false {
-        PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
-    }
-    UserSettings := ""
-} catch {
-    Notify.Show('Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
-}
-
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
 class pathSelector_DefaultSettings {
@@ -122,7 +112,16 @@ if (g_pth_Settings.enableUIAccess = true) and !A_IsCompiled and ThisScriptRunnin
     ExitApp()
 }
 
-PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
+try {
+    UserSettings := UserPref()
+    if UserSettings.Use_MButton = false
+        PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
+    else
+        PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
+    UserSettings := ""
+} catch {
+    Notify.Show('Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
+}
 
 ; ---------------------------------------- INITIALIZATION FUNCTIONS AND CLASSES  ----------------------------------------------
 
