@@ -21,6 +21,7 @@ SetWorkingDir(lineDir)
 #Include <Classes\ptf>
 #Include <Classes\switchTo>
 #Include <Classes\Settings>
+#Include <Other\Notify\Notify>
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
@@ -616,7 +617,8 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     }
 
     ; Don't display menu unless it's a dialog or console window
-    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog|CabinetWClass)$") || !InStr(getMouse.control, "DirectUIHWND", true) {
+    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog|CabinetWClass)$") ||
+        (((windowClass = "CabinetWClass" || windowClass = "#32770") && windowExe = "explorer.exe") && !InStr(getMouse.control, "DirectUIHWND", true)) {
         if (debugMode) {
             tooltipText := "Window class does not match expected. Detected: " windowClass
             /* if (windowClass = "CabinetWClass") {
