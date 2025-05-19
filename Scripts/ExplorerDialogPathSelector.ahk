@@ -647,15 +647,24 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     if WinExist("ahk_exe Adobe Premiere Pro (Beta).exe") || WinExist("ahk_exe Adobe Premiere Pro.exe") {
         getProj := WinGet.ProjPath()
         if getProj != false {
-            prPrjPaths := Map(
-                WinGet.pathU(getProj.Dir "\.."),               "Project Path",    WinGet.pathU(getProj.Dir "\..\audio\sfx"),        "SFX",
-                WinGet.pathU(getProj.Dir "\..\videos"),        "Videos",          WinGet.pathU(getProj.Dir "\..\renders\draft"),    "Renders\Draft",
-                WinGet.pathU(getProj.Dir "\..\renders\final"), "Renders\Final",   WinGet.pathU(getProj.Dir "\..\timeline renders"), "Timeline Renders"
-            )
+            prPrjPaths := [
+                WinGet.pathU(getProj.Dir "\.."),                  "Project Root Path", WinGet.pathU(getProj.Dir "\..\audio\sfx"),     "audio\sfx",
+                WinGet.pathU(getProj.Dir "\..\audio\music"),      "audio\music",       WinGet.pathU(getProj.Dir "\..\videos"),        "videos",
+                "—", "—",
+                WinGet.pathU(getProj.Dir "\..\renders\draft"),    "Renders\Draft",     WinGet.pathU(getProj.Dir "\..\renders\final"), "Renders\Final",
+                WinGet.pathU(getProj.Dir "\..\timeline renders"), "Timeline Renders"
+            ]
             InsertMenuItem(CurrentLocations, "Premiere Project", unset, unset, unset, unset) ; Header
-            for k in prPrjPaths {
-                if DirExist(k)
-                    InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix prPrjPaths.Get(k), k, ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
+            for i, v in prPrjPaths {
+                if Mod(i, 2) != 0
+                    continue
+                currentPath := prPrjPaths.Get(i-1)
+                if v == "—" {
+                    InsertMenuItem(CurrentLocations, v, unset, unset, unset, unset) ; Header
+                    continue
+                }
+                if DirExist(currentPath)
+                    InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix v, currentPath, ptf.rootDir "\Support Files\Icons\prprj.ico", 1, false)
             }
         }
     }
