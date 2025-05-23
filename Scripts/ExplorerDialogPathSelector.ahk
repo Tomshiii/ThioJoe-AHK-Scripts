@@ -651,8 +651,8 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
                 WinGet.pathU(getProj.Dir "\.."),                  "Project Root Path", WinGet.pathU(getProj.Dir "\..\audio\sfx"),     "audio\sfx",
                 WinGet.pathU(getProj.Dir "\..\audio\music"),      "audio\music",       WinGet.pathU(getProj.Dir "\..\videos"),        "videos",
                 "—", "—",
-                WinGet.pathU(getProj.Dir "\..\renders\draft"),    "renders\draft",     WinGet.pathU(getProj.Dir "\..\renders\socials"), "renders\socials",
-                WinGet.pathU(getProj.Dir "\..\renders\final"), "renders\final",
+                WinGet.pathU(getProj.Dir "\..\renders\draft"),    "renders\draft",     WinGet.pathU(getProj.Dir "\..\renders\final"), "renders\final",
+                WinGet.pathU(getProj.Dir "\..\renders\socials"), "renders\socials",
                 WinGet.pathU(getProj.Dir "\..\timeline renders"), "Timeline Renders"
             ]
             InsertMenuItem(CurrentLocations, "Premiere Project", unset, unset, unset, unset) ; Header
