@@ -101,7 +101,7 @@ InitializePathSelectorSettings()
 
 ; System tray menu setup
 pathSelector_SystemTraySettings.hideTrayIcon := g_pth_Settings.hideTrayIcon
-PathSelector_SetupSystemTray(pathSelector_SystemTraySettings)
+; PathSelector_SetupSystemTray(pathSelector_SystemTraySettings)
 ;TraySetIcon("Explorer Dialog Path Selector Icon.ico") ; Uncomment to set a custom icon for the system tray. There is one in the 'Assets' folder of the repo
 
 
