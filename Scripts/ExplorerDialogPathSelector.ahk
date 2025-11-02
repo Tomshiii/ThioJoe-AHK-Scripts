@@ -673,8 +673,14 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     if (g_pth_Settings.favoritePaths.Length > 0) {
         InsertMenuItem(CurrentLocations, "Assets", unset, unset, unset, unset) ; Header
         for favoritePath in g_pth_Settings.favoritePaths {
+            displayPath := favoritePath
+            if InStr(SubStr(favoritePath, 1, 2), "► ") {
+                SplitPath(SubStr(favoritePath, 3), &finalPath)
+                favoritePath := SubStr(favoritePath, 3)
+                displayPath := A_Space A_Space A_Space "► " finalPath
+            }
             if DirExist(favoritePath) {
-                InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix favoritePath, favoritePath, A_WinDir . "\system32\imageres.dll", "180", false)
+                InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix displayPath, favoritePath, A_WinDir . "\system32\imageres.dll", "180", false)
                 hasItems := true
             }
         }
