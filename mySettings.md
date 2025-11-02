@@ -11,5 +11,5 @@ enableUIAccess=0
 maxMenuLength=120
 hideTrayIcon=0
 useBoldTextActive=1
-favoritePaths=W:\_Assets\sfx|W:\_Assets\videos|W:\_Assets\Plugins & Presets\Mogrts & Presets|
+favoritePaths=W:\_Assets|W:\_Assets\sfx|► W:\_Assets\sfx\Horror stuff|W:\_Assets\videos|W:\_Assets\Plugins & Presets\Mogrts & Presets|
 conditionalFavorites=DialogOwnerExe||
