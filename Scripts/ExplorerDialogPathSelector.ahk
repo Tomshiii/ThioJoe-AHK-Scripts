@@ -408,7 +408,8 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     if UserSettings.Use_Thio_MButton = false || UserSettings.Use_Thio_MButton = "false"
         return
 
-    getMouse := obj.MousePos()
+    if !getMouse := obj.MousePos()
+        return
 
     ; ------------------------- LOCAL FUNCTIONS -------------------------
     ProcessCLSIDPaths(clsidInputPath) {
