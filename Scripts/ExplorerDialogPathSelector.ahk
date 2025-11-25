@@ -21,7 +21,9 @@ SetWorkingDir(lineDir)
 #Include <Classes\ptf>
 #Include <Classes\switchTo>
 #Include <Classes\Settings>
+#Include <Classes\clip>
 #Include <Other\Notify\Notify>
+#Include <Functions\delaySI>
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
@@ -618,7 +620,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     }
 
     ; Don't display menu unless it's a dialog or console window
-    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog|CabinetWClass)$") ||
+    if !(windowClass ~= "^(?i:#32770|ConsoleWindowClass|SunAwtDialog|CabinetWClass|File Pilot)$") ||
         (((windowClass = "CabinetWClass" || windowClass = "#32770") && windowExe = "explorer.exe") && !InStr(getMouse.control, "DirectUIHWND", true)) {
         if (debugMode) {
             tooltipText := "Window class does not match expected. Detected: " windowClass
@@ -1017,53 +1019,60 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     if (f_path = "")
         return
 
-    if (windowClass = "ConsoleWindowClass") {
-        WinActivate("ahk_id " windowID)
-        SetKeyDelay(0)
-        Send("{Esc}pushd " f_path "{Enter}")
-        return
-    }
-    ; Java dialogs have a different structure
-    else if (windowClass = "SunAwtDialog") {
-        WinActivate("ahk_id " windowID)
+    switch windowClass {
+        case "ConsoleWindowClass":
+            WinActivate("ahk_id " windowID)
+            SetKeyDelay(0)
+            Send("{Esc}pushd " f_path "{Enter}")
+            return
+        case "SunAwtDialog":
+            WinActivate("ahk_id " windowID)
 
-        ; Send Alt + N to focus the file name edit box
-        DllCall("keybd_event", "UChar", 0x12, "UChar", 0x38, "UInt", 0, "UPtr", 0) ; Alt Down
-        Sleep(20)
-        DllCall("keybd_event", "UChar", 0x4E, "UChar", 0x31, "UInt", 0, "UPtr", 0) ; N Down
-        Sleep(20)
-        DllCall("keybd_event", "UChar", 0x4E, "UChar", 0x31, "UInt", 2, "UPtr", 0) ; N up
-        DllCall("keybd_event", "UChar", 0x12, "UChar", 0x38, "UInt", 2, "UPtr", 0) ; Alt up
+            ; Send Alt + N to focus the file name edit box
+            DllCall("keybd_event", "UChar", 0x12, "UChar", 0x38, "UInt", 0, "UPtr", 0) ; Alt Down
+            Sleep(20)
+            DllCall("keybd_event", "UChar", 0x4E, "UChar", 0x31, "UInt", 0, "UPtr", 0) ; N Down
+            Sleep(20)
+            DllCall("keybd_event", "UChar", 0x4E, "UChar", 0x31, "UInt", 2, "UPtr", 0) ; N up
+            DllCall("keybd_event", "UChar", 0x12, "UChar", 0x38, "UInt", 2, "UPtr", 0) ; Alt up
 
-        ; Select the text in the box and delete it because otherwise it appends it
-        Sleep(50)
-        Send("^a")
-        Sleep(20)
-        Send("{Del}")
-        ; Send the path. Add a backslash just in case - the dialog seems to accept it
-        Sleep(20)
-        Send(f_path "\")
-        Send("{Enter}")
-        Sleep(20)
-        ; Remove the text in the box because it doesn't remove it automatically
-        Send("^a")
-        Sleep(20)
-        Send("{Delete}")
-        return
-
-    }
-    else if (windowClass = "CabinetWClass") {
-        switchTo.Path(f_path, windowID)
-    } else { ; Default: #32770 or other compatible dialog
-        ; Check if it's a legacy dialog
-        if (dialogInfo := DetectDialogType(windowID)) {
-            ; Use the legacy navigation approach
-            NavigateDialog(f_path, windowID, dialogInfo)
-        } else {
-            ; Assume modern dialog
-            NavigateUsingAddressbar(f_path, windowID)
-        }
-        return
+            ; Select the text in the box and delete it because otherwise it appends it
+            Sleep(50)
+            Send("^a")
+            Sleep(20)
+            Send("{Del}")
+            ; Send the path. Add a backslash just in case - the dialog seems to accept it
+            Sleep(20)
+            Send(f_path "\")
+            Send("{Enter}")
+            Sleep(20)
+            ; Remove the text in the box because it doesn't remove it automatically
+            Send("^a")
+            Sleep(20)
+            Send("{Delete}")
+            return
+        case "CabinetWClass":
+            switchTo.Path(f_path, windowID)
+            return
+        case "File Pilot":
+            currentClip := clip.clear()
+            A_Clipboard := f_path "\"
+            if !ClipWait(2) {
+                clip.delayReturn(currentClip)
+                return
+            }
+            delaySI(20, "^p", "^v", "{Enter}")
+            clip.delayReturn(currentClip)
+            return
+        default:
+            if (dialogInfo := DetectDialogType(windowID)) {
+                ; Use the legacy navigation approach
+                NavigateDialog(f_path, windowID, dialogInfo)
+            } else {
+                ; Assume modern dialog
+                NavigateUsingAddressbar(f_path, windowID)
+            }
+            return
     }
 }
 
