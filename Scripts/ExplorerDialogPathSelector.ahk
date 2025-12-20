@@ -16,14 +16,15 @@ SplitPath(A_LineFile,, &lineDir)
 SetWorkingDir(lineDir)
 ; Set the path to the RemoteTreeView class file as necessary. Here it is up one directory then in the Lib folder. Necessary to navigate legacy folder dialogs.
 ; Can be acquired from: https://github.com/ThioJoe/AHK-RemoteTreeView-V2/blob/main/RemoteTreeView.ahk
-#Include <Other\ThioJoe\Lib\RemoteTreeView>
-#Include <Classes\winGet>
-#Include <Classes\ptf>
-#Include <Classes\switchTo>
-#Include <Classes\Settings>
-#Include <Classes\clip>
-#Include <Other\Notify\Notify>
-#Include <Functions\delaySI>
+#Include '%A_Appdata%\tomshi\lib'
+#Include Other\ThioJoe\Lib\RemoteTreeView.ahk
+#Include Classes\winGet.ahk
+#Include Classes\ptf.ahk
+#Include Classes\switchTo.ahk
+#Include Classes\Settings.ahk
+#Include Classes\clip.ahk
+#Include Other\Notify\Notify.ahk
+#Include Functions\delaySI.ahk
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
