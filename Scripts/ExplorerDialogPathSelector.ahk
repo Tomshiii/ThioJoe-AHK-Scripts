@@ -23,6 +23,7 @@ SetWorkingDir(lineDir)
 #Include Classes\switchTo.ahk
 #Include Classes\Settings.ahk
 #Include Classes\clip.ahk
+#Include Classes\CLSID_Objs.ahk
 #Include Other\Notify\Notify.ahk
 #Include Functions\delaySI.ahk
 
@@ -117,7 +118,7 @@ if (g_pth_Settings.enableUIAccess = true) and !A_IsCompiled and ThisScriptRunnin
 }
 
 try {
-    UserSettings := UserPref()
+    UserSettings := CLSID_Objs.load("UserSettings")
     if UserSettings.Use_MButton = false
         PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
     else
@@ -407,7 +408,7 @@ GetDOpusPaths() {
 
 ; Display the menu
 DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must accept the hotkey as its first parameter
-    UserSettings := UserPref()
+    UserSettings := CLSID_Objs.load("UserSettings")
     if UserSettings.Use_Thio_MButton = false || UserSettings.Use_Thio_MButton = "false"
         return
 
