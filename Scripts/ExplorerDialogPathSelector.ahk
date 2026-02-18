@@ -690,13 +690,12 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
                 hasItems := true
             }
         }
-        otherDirs := ["W:\work\_Main Channel"]
-        if hasItems = true {
-            InsertMenuItem(CurrentLocations, "Favourites", unset, unset, unset, unset) ; Header
-            for v in otherDirs {
-                if DirExist(v) {
-                    InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix v, v, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
-                }
+        otherDirs := ["W:\work"]
+        for i, v in otherDirs {
+            if DirExist(v) {
+                if i = 1
+                    InsertMenuItem(CurrentLocations, "Favourites", unset, unset, unset, unset) ; Header
+                InsertMenuItem(CurrentLocations, g_pth_settings.standardEntryPrefix v, v, A_WinDir . "\system32\imageres.dll", "-1024", false) ; Favorite Path
             }
         }
     }
