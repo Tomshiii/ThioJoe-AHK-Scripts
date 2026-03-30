@@ -921,53 +921,102 @@ PathSelector_Navigate(ThisMenuItemName, ThisMenuItemPos, MyMenu, f_path, windowC
     }
 
     NavigateUsingAddressbar(path, windowHwnd) {
-        ; ----------------- Local functions -----------------
-        CheckAddressbarReadyAndNavigate(attemptNumber := 1) {
-            addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
-            addressBarClassNN := ControlGetClassNN(addressbarHwnd)
+            ; ----------------- Local functions -----------------
+            local eachWaitTime := 25
+            local waitedMs := 0
+            local addressBarClassNN := ""
+            local foundBar := false
 
-            ; Regex match if the address bar is an Edit control but not Edit1, which seems to always the file name box. But the address bar box might not always be Edit2
-            if (addressBarClassNN != "Edit1" and addressBarClassNN ~= "Edit\d+") {
-                DoNavigation(addressBarClassNN, addressbarHwnd)
-            } else if (attemptNumber <= 3) {
-                ; Try waiting a bit longer for the address bar to be ready
-                Sleep(50)
-                CheckAddressbarReadyAndNavigate(attemptNumber + 1)
+            CheckAddressbarFocused() {
+                addressbarHwnd := ControlGetFocus("ahk_id " windowHwnd)
+
+                if (addressbarHwnd != 0) {
+                    ; Regex match if the address bar is an Edit control but not Edit1, which seems to always the file name box. But the address bar box might not always be Edit2
+                    if (addressBarClassNN != "Edit1" and addressBarClassNN ~= "Edit\d+") {
+                        foundBar := true
+                        return
+                    } else {
+                        addressBarClassNN := ControlGetClassNN(addressbarHwnd)
+                    }
+                }
+
+                if (waitedMs <= 300) {
+                    ; Try waiting a bit longer for the address bar to be ready
+                    Sleep(eachWaitTime)
+                    waitedMs += eachWaitTime
+                    OutputDebug("Waiting for address bar to be ready. Waited " (waitedMs) "ms`n")
+                    CheckAddressbarFocused()
+                }
+            }
+
+            ; Wait for the address bar to contain the path
+            WaitForText() {
+                ; Sleep(10) ; Short initial wait
+                local text := ControlGetText(addressBarClassNN, "ahk_id " windowHwnd)
+                if (text != path) {
+                    if (waitedMs <= 300) {
+                        Sleep(eachWaitTime)
+                        waitedMs += eachWaitTime
+                        OutputDebug("Waiting for address bar text to update. Waited " (waitedMs) "ms`n")
+                        WaitForText()
+                    }
+                }
+            }
+
+            CheckAddressbarReadyAndNavigate() {
+                CheckAddressbarFocused() ; This is recusive and will wait for it to be focused
+
+                if (foundBar = true) {
+                    ControlSetText(path, addressBarClassNN, "ahk_id " windowHwnd)
+                    WaitForText()
+                    ControlFocus(addressBarClassNN, "ahk_id " windowHwnd) ; Ensure address bar is still focused, it should be
+                    ; Send Enter key down and up messages directly to the control
+                    PostMessage(
+                        0x0100,                 ; msg: WM_KEYDOWN
+                        0x0D,                   ; wParam: The virtual key code of the key - 0x0D = Enter
+                        0x001C0001,             ; lParam: The repeat count, scan code, extended-key flag, context code, previous key-state flag, and transition-state flag
+                        addressBarClassNN,      ; Control ID -- When excluded it goes to the target window not a specific control
+                        "ahk_id " windowHwnd,   ; WinTitle
+                        unset, unset, unset     ; Wintext, ExcludeTitle, ExcludeText
+                    )
+                    PostMessage(
+                        0x0101,                 ; msg: WM_KEYUP
+                        0x0D,                   ; wParam: The virtual key code of the key - 0x0D = Enter
+                        0xC01C0001,             ; lParam: The repeat count, scan code, extended-key flag, context code, previous key-state flag, and transition-state flag
+                        addressBarClassNN,      ; Control ID -- When excluded it goes to the target window not a specific control
+                        "ahk_id " windowHwnd,   ; WinTitle
+                        unset, unset, unset     ; Wintext, ExcludeTitle, ExcludeText
+                    )
+                } else {
+                    OutputDebug("Address bar not found or didn't match expected class name. Found ClassNN: " addressBarClassNN "`n")
+                }
+            }
+
+            ; ----------------- End of local functions -----------------
+            ; Activate the window
+            WinActivate("ahk_id " windowHwnd)
+            ; Try getting the text from the Edit1 control
+            originalFileName := ""
+            try {
+                originalFileName := ControlGetText("Edit1", "ahk_id " windowHwnd)
+                ControlSetText("", "Edit1", windowHwnd) ; Clear the text box just in case something weird happens so it doesn't save the file prematurely
+            } catch Error as err {
+                OutputDebug("`nError getting or setting Edit1 control text. Message: " err.Message)
+            }
+
+            ; Move focus to Address Bar. Initially it is probably Edit1, the main File Name box.
+            Send("!{d}") ; For some reason doesn't seem to work sending to the window. So use Alt + D to focus the address bar (or whatever language key)
+            Sleep(25)
+            CheckAddressbarReadyAndNavigate()
+
+            ; Restore the original file name if it was there
+            if (originalFileName != "") {
+                ControlSetText(originalFileName, "Edit1", "ahk_id " windowHwnd)
+                ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
             } else {
-                OutputDebug("`n`nAddress bar didn't match expected class name. Found ClassNN: " addressBarClassNN)
+                OutputDebug("`nOriginal file name not found or no file name box handle")
             }
         }
-        ; ----------------
-        DoNavigation(_addressbarClassNN, _addressbarHwnd) {
-            ControlSetText(path, _addressbarClassNN, "ahk_id " windowHwnd)
-            ControlSend("{Enter}", _addressbarClassNN, "ahk_id " windowHwnd)
-            ControlFocus("Edit1", "ahk_id " windowHwnd) ; Return focus to the file name box
-        }
-        ; ----------------- End of local functions -----------------
-        ; Activate the window
-        WinActivate("ahk_id " windowHwnd)
-        WinWaitActive("ahk_id " windowHwnd)
-        ; Try getting the text from the Edit1 control
-        originalFileName := ""
-        try {
-            originalFileName := ControlGetText("Edit1", "ahk_id " windowHwnd)
-            ControlSetText("", "Edit1", windowHwnd) ; Clear the text box just in case something weird happens so it doesn't save the file prematurely
-        } catch Error as err {
-            OutputDebug("`nError getting or setting Edit1 control text. Message: " err.Message)
-        }
-
-        ; Move focus to Address Bar
-        Send("!{d}") ; For some reason doesn't seem to work sending to the window
-        Sleep(50)
-        CheckAddressbarReadyAndNavigate()
-
-        ; Restore the original file name if it was there
-        if (originalFileName != "") {
-            ControlSetText(originalFileName, "Edit1", "ahk_id " windowHwnd)
-        } else{
-            OutputDebug("`n`nOriginal file name not found or no file name box handle")
-        }
-    }
 
     GetDialogAddressbarHwnd(windowHwnd) {
         controls := WinGetControls(windowHwnd)
