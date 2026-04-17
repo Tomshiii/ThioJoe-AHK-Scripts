@@ -24,9 +24,9 @@ SetWorkingDir(lineDir)
 #Include Classes\Settings.ahk
 #Include Classes\clip.ahk
 #Include Classes\CLSID_Objs.ahk
+#Include Classes\notifyExt.ahk
 #Include Other\Notify\Notify.ahk
 #Include Functions\delaySI.ahk
-#Include Functions\notifyIfNotExist.ahk
 
 ; ---------------------------------------- DEFAULT USER SETTINGS ----------------------------------------
 ; These will be overridden by settings in the settings ini file if it exists. Otherwise these defaults will be used.
@@ -126,7 +126,7 @@ try {
         PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
     UserSettings := ""
 } catch {
-    notifyIfNotExist("thioUsersettingsError", 'Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
+    notifyExt.notifyIfNotExist("thioUsersettingsError", 'Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
 }
 
 ; ---------------------------------------- INITIALIZATION FUNCTIONS AND CLASSES  ----------------------------------------------
