@@ -126,7 +126,7 @@ try {
         PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
     UserSettings := ""
 } catch {
-    notifyExt.notifyIfNotExist("thioUsersettingsError", 'Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
+    notifyExt.showIfNotExist("thioUsersettingsError", 'Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
 }
 
 ; ---------------------------------------- INITIALIZATION FUNCTIONS AND CLASSES  ----------------------------------------------
