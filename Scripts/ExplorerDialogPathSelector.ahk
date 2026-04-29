@@ -412,6 +412,7 @@ DisplayDialogPathMenu(thisHotkey) { ; Called via the Hotkey function, so it must
     UserSettings := CLSID_Objs.load("UserSettings")
     if UserSettings.Use_Thio_MButton = false || UserSettings.Use_Thio_MButton = "false"
         return
+    UserSettings := ""
 
     if !getMouse := obj.MousePos()
         return
