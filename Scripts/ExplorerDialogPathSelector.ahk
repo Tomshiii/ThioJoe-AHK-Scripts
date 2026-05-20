@@ -119,7 +119,7 @@ if (g_pth_Settings.enableUIAccess = true) and !A_IsCompiled and ThisScriptRunnin
 }
 
 try {
-    UserSettings := CLSID_Objs.load("UserSettings")
+    UserSettings := CLSID_Objs.clone("UserSettings")
     if UserSettings.Use_MButton = false
         PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
     else
