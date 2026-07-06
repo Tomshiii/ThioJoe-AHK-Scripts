@@ -120,12 +120,12 @@ if (g_pth_Settings.enableUIAccess = true) and !A_IsCompiled and ThisScriptRunnin
 
 try {
     UserSettings := CLSID_Objs.clone("UserSettings")
-    if UserSettings.Use_Thio_MButton = true || UserSettings.Use_MButton = "disabled"
-        return
-    if UserSettings.Use_Thio_MButton = true && UserSettings.Use_MButton = false
-        PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
-    else
-        PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
+    if UserSettings.Use_Thio_MButton = true && UserSettings.Use_MButton != "disabled" {
+        if UserSettings.Use_Thio_MButton = true && UserSettings.Use_MButton = false
+            PathSelector_UpdateHotkey(UserSettings.alternate_MButton_Key)
+        else
+            PathSelector_UpdateHotkey("", "") ; Initialize the hotkey. It will use the hotkey from settings
+    }
     UserSettings := ""
 } catch {
     notifyExt.showIfNotExist("thioUsersettingsError", 'Thio MButton Script', 'The proper UserSettings values either do not exist or are broken. Either wait for the settings file to generate new values or check the values for issues, then reload',, 'Windows Battery Critical',, 'bdr=Red maxW=400')
